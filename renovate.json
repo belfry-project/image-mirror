@@ -1,0 +1,39 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["github>belfry-project/.github"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Upstream release (tag and commit) an image is built from",
+      "managerFilePatterns": ["/(^|/)Dockerfile$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>github-tags) depName=(?<depName>\\S+)\\nARG [A-Z_]+_VERSION=(?<currentValue>\\S+)\\nARG [A-Z_]+_COMMIT=(?<currentDigest>[a-f0-9]{40})\\n"
+      ]
+    },
+    {
+      "customType": "regex",
+      "description": "Go modules upgraded past upstream's pins",
+      "managerFilePatterns": ["/(^|/)go-upgrades\\.txt$/"],
+      "matchStrings": ["(?<depName>[^\\s@#]+)@(?<currentValue>v[^\\s#]+)"],
+      "datasourceTemplate": "go"
+    }
+  ],
+  "pip-compile": {
+    "managerFilePatterns": ["/(^|/)requirements\\.txt$/"]
+  },
+  "packageRules": [
+    {
+      "description": "requirements.txt files are compiled from requirements.in by the pip-compile manager",
+      "matchManagers": ["pip_requirements"],
+      "enabled": false
+    },
+    {
+      "description": "A new upstream release needs a review of go-upgrades.txt and requirements, and BELFRY_RELEASE reset to 1",
+      "matchDatasources": ["github-tags"],
+      "matchFileNames": ["**/Dockerfile"],
+      "groupName": "upstream releases",
+      "separateMinorPatch": true,
+      "dependencyDashboardApproval": true
+    }
+  ]
+}

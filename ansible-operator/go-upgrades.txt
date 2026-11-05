@@ -1,0 +1,6 @@
+# Go modules of ansible-operator upgraded past the versions upstream pins, to
+# pick up security fixes. One "module@version" per line; Renovate keeps them current.
+golang.org/x/crypto@v0.58.0
+golang.org/x/net@v0.62.0
+golang.org/x/text@v0.43.0
+google.golang.org/grpc@v1.85.0
