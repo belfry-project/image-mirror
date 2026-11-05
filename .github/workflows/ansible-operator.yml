@@ -1,0 +1,74 @@
+---
+
+name: ansible-operator
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ansible-operator/**
+      - scripts/**
+      - .github/workflows/ansible-operator.yml
+      - .github/workflows/build-image.yml
+  pull_request:
+    paths:
+      - ansible-operator/**
+      - scripts/**
+      - .github/workflows/ansible-operator.yml
+      - .github/workflows/build-image.yml
+  schedule:
+    # Weekly rebuild to pick up UBI updates
+    - cron: '41 4 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ansible-operator-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read versions
+        id: info
+        run: ./scripts/image-info.sh ansible-operator | tee -a "$GITHUB_OUTPUT"
+
+      - name: Check out ansible-operator-plugins ${{ steps.info.outputs.upstream_version }}
+        uses: actions/checkout@v4
+        with:
+          repository: operator-framework/ansible-operator-plugins
+          ref: ${{ steps.info.outputs.upstream_commit }}
+          path: src
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ steps.info.outputs.go_version }}
+          cache: false
+
+      - name: Upgrade Go modules
+        working-directory: src
+        run: ../scripts/upgrade-go-modules.sh ../ansible-operator/go-upgrades.txt
+
+      - name: Run the unit tests
+        working-directory: src
+        run: make test-unit
+
+  build:
+    needs: test
+    uses: ./.github/workflows/build-image.yml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    with:
+      dir: ansible-operator
+      description: ansible-operator base image (operator-framework/ansible-operator-plugins) rebuilt with current Go, Go modules, UBI and Python packages for Belfry
