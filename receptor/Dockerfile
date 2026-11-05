@@ -44,14 +44,17 @@ LABEL version="${RECEPTOR_VERSION}"
 
 COPY --from=source /packaging/container/receptor.conf /etc/receptor/receptor.conf
 
+# The newer pip used for installing is removed again (it vendors an old
+# setuptools); the pip3.12 of the python3.12-pip package stays available.
 RUN --mount=type=bind,from=wheels,source=/wheels,target=/wheels \
     dnf -y update && \
     dnf -y install python3.12-pip && \
     dnf clean all && \
     rm -rf /var/cache/dnf && \
-    pip3.12 install --no-cache-dir --upgrade pip wheel && \
+    pip3.12 install --no-cache-dir --upgrade pip && \
     pip3.12 install --no-cache-dir dumb-init ansible-runner /wheels/*.whl && \
-    pip3.12 check
+    pip3.12 check && \
+    pip3.12 uninstall -y pip
 
 COPY --from=builder /source/receptor /usr/bin/receptor
 
